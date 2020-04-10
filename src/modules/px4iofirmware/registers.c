@@ -157,7 +157,7 @@ volatile uint16_t	r_page_setup[] = {
 	[PX4IO_P_SETUP_FEATURES]		= PX4IO_P_SETUP_FEATURES_ADC_RSSI,
 	[PX4IO_P_SETUP_ARMING]			= (PX4IO_P_SETUP_ARMING_OVERRIDE_IMMEDIATE),
 	[PX4IO_P_SETUP_PWM_RATES]		= 0,
-	[PX4IO_P_SETUP_PWM_DEFAULTRATE]		= 50,
+	[PX4IO_P_SETUP_PWM_DEFAULTRATE]		= 200, //meen
 	[PX4IO_P_SETUP_PWM_ALTRATE]		= 200,
 	[PX4IO_P_SETUP_SBUS_RATE]		= 72,
 	/* this is unused, but we will pad it for readability (the compiler pads it automatically) */
