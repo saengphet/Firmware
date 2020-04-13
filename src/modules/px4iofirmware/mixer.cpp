@@ -506,6 +506,16 @@ mixer_callback(uintptr_t handle,
 		}
 	}
 
+		/* YAW disable meen */
+	if (should_arm_nothrottle && !should_arm) {
+		if ((control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE ||
+		     control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE_ALTERNATE) &&
+		    control_index == actuator_controls_s::INDEX_YAW) {
+			/* mark the throttle as invalid */
+			control = 0;
+		}
+	}
+
 	return 0;
 }
 

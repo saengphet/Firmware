@@ -44,7 +44,7 @@
 
 using namespace matrix;
 
-#define ARSP_YAW_CTRL_DISABLE 7.0f	// airspeed at which we stop controlling yaw during a front transition
+#define ARSP_YAW_CTRL_DISABLE 8.0f	// airspeed at which we stop controlling yaw during a front transition //meen
 
 Tiltrotor::Tiltrotor(VtolAttitudeControl *attc) :
 	VtolType(attc)
@@ -287,8 +287,8 @@ void Tiltrotor::update_transition_state()
 		_mc_roll_weight = 0.0f;
 		_mc_yaw_weight = 0.0f;
 
-		// ramp down motors not used in fixed-wing flight (setting MAX_PWM down scales the given output into the new range)
-		int ramp_down_value = (1.0f - time_since_trans_start / _params_tiltrotor.front_trans_dur_p2) *
+		// ramp down motors not used in fixed-wing flight (setting MAX_PWM down scales the given output into the new range) //meen
+		int ramp_down_value = (1.0f - time_since_trans_start / (_params_tiltrotor.front_trans_dur_p2 * 0.1f)) *
 				      (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) + PWM_DEFAULT_MIN;
 
 
