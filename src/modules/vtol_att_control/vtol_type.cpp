@@ -419,7 +419,7 @@ bool VtolType::is_channel_set(const int channel, const int target)
 }
 
 
-float VtolType::pusher_assist()
+float VtolType::pusher_assist() //meen-interesting
 {
 	// if the thrust scale param is zero or the drone is not in some position or altitude control mode,
 	// then the pusher-for-pitch strategy is disabled and we can return
