@@ -13,10 +13,8 @@
 # @output MAIN4 Motor rear right
 # @output MAIN5 Tilt servo right
 # @output MAIN6 Tilt servo left
-# @output MAIN7 Elevon right
-# @output MAIN8 Elevon left
-#
-
+# @output MAIN7 Z
+# @output MAIN8 Z
 sh /etc/init.d/rc.vtol_defaults
 
 if [ $AUTOCNF = yes ]
