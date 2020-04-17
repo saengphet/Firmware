@@ -36,11 +36,11 @@ On the assumption that the two tail servos are physically reversed, the pitch
 input is inverted between the two servos.
 
 M: 2
-S: 1 2  6000  6000      0 -10000  10000
+S: 1 2  6500  6500      0 -10000  10000
 S: 1 1  -8500  -8500      0 -10000  10000
 
 M: 2
-S: 1 2  6000  6000      0 -10000  10000
+S: 1 2  6500  6500      0 -10000  10000
 S: 1 1   8500   8500      0 -10000  10000
 
 Motor speed mixer

@@ -1,22 +1,20 @@
 #!/bin/sh
 #
-# @name E-flite Convergence
+# @name Believer Tiltrotor
 #
 # @type VTOL Tiltrotor
 # @class VTOL
 #
 # @maintainer Andreas Antener <andreas@uaventure.com>
 #
-# @output MAIN1 Motor right
-# @output MAIN2 Motor left
-# @output MAIN3 Motor back
-# @output MAIN4 empty
+# @output MAIN1 Motor front right
+# @output MAIN2 Motor rear left
+# @output MAIN3 Motor front left
+# @output MAIN4 Motor rear right
 # @output MAIN5 Tilt servo right
 # @output MAIN6 Tilt servo left
-# @output MAIN7 Elevon right
-# @output MAIN8 Elevon left
-#
-
+# @output MAIN7 Z
+# @output MAIN8 Z
 sh /etc/init.d/rc.vtol_defaults
 
 if [ $AUTOCNF = yes ]

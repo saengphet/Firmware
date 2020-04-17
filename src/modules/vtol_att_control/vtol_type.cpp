@@ -420,7 +420,7 @@ bool VtolType::is_channel_set(const int channel, const int target)
 }
 
 
-float VtolType::pusher_assist()
+float VtolType::pusher_assist() //meen-interesting
 {
 	// Altitude above ground is distance sensor altitude if available, otherwise local z-position
 	float dist_to_ground = -_local_pos->z;
