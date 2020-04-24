@@ -573,25 +573,32 @@ Navigator::run()
 					if (_mission.get_land_start_available() && !get_land_detected()->landed) {
 						// the mission contains a landing spot
 						_mission.set_execution_mode(mission_result_s::MISSION_EXECUTION_MODE_FAST_FORWARD);
+						navigation_mode_new = &_mission;
 
-						if (_navigation_mode != &_mission) {
-							if (_navigation_mode == nullptr) {
+						if ((_navigation_mode != &_mission) ) {
+							if (_navigation_mode == nullptr || _navigation_mode == &_rtl ) {
 								// switching from an manual mode, go to landing if not already landing
-								if (!on_mission_landing()) {
-									start_mission_landing();
+								//if (!on_mission_landing()) { //meen
+									//start_mission_landing(); //meen
+								navigation_mode_new = &_rtl;
+								if (rtl_activated) {
+									 mavlink_and_console_log_info(get_mavlink_log_pub(), "RTL for non-mission mode, go to home");
 								}
+								//}
+
 
 							} else {
 								// switching from an auto mode, continue the mission from the closest item
 								_mission.set_closest_item_as_current();
+								 navigation_mode_new = &_mission; //meen
 							}
 						}
 
-						if (rtl_activated) {
+						if (rtl_activated && _navigation_mode != nullptr) { //meen
 							mavlink_and_console_log_info(get_mavlink_log_pub(), "RTL Mission activated, continue mission");
 						}
 
-						navigation_mode_new = &_mission;
+						//navigation_mode_new = &_mission; //meen
 
 					} else {
 						// fly the mission in reverse if switching from a non-manual mode
@@ -621,6 +628,7 @@ Navigator::run()
 							}
 
 							navigation_mode_new = &_rtl;
+							//mavlink_and_console_log_info(get_mavlink_log_pub(), "TEST HOME RTL"); //meen
 						}
 					}
 

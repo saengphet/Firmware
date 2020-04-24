@@ -944,13 +944,14 @@ Mission::set_mission_items()
 
 				// for fast forward convert certain types to simple waypoint
 				// XXX: add other types which should be ignored in fast forward
+				/* //meen-s
 				if (_mission_execution_mode == mission_result_s::MISSION_EXECUTION_MODE_FAST_FORWARD &&
 				    ((_mission_item.nav_cmd == NAV_CMD_LOITER_UNLIMITED) ||
 				     (_mission_item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT))) {
 					_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 					_mission_item.autocontinue = true;
 					_mission_item.time_inside = 0.0f;
-				}
+				} */ //meen-e
 
 				break;
 			}
@@ -1009,6 +1010,7 @@ Mission::set_mission_items()
 				}
 
 				/* don't advance mission after FW to MC command */
+				/* //meen-s
 				if (_mission_item.nav_cmd == NAV_CMD_DO_VTOL_TRANSITION
 				    && _work_item_type == WORK_ITEM_TYPE_DEFAULT
 				    && new_work_item_type == WORK_ITEM_TYPE_DEFAULT
@@ -1017,9 +1019,10 @@ Mission::set_mission_items()
 				    && pos_sp_triplet->current.valid) {
 
 					new_work_item_type = WORK_ITEM_TYPE_CMD_BEFORE_MOVE;
-				}
+				} */
 
 				/* after FW to MC transition finish moving to the waypoint */
+				/* //meen
 				if (_work_item_type == WORK_ITEM_TYPE_CMD_BEFORE_MOVE &&
 				    new_work_item_type == WORK_ITEM_TYPE_DEFAULT
 				    && pos_sp_triplet->current.valid) {
@@ -1038,7 +1041,7 @@ Mission::set_mission_items()
 					_mission_item.autocontinue = true;
 					_mission_item.time_inside = 0.0f;
 				}
-
+				*/ //meen-e
 				break;
 			}
 
