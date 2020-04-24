@@ -372,12 +372,23 @@ RTL::set_rtl_item()
 			// Don't change altitude.
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
+<<<<<<< 82f04a02cd653e338cc3c320dfcf337b1409b5c5
 			//_mission_item.altitude = loiter_altitude;
 
 			if (_navigator->get_vstatus()->is_vtol && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
 				_mission_item.altitude = _rtl_alt;
 			} else  {
 				_mission_item.altitude = loiter_altitude; } //meen-e
+=======
+			_mission_item.altitude = loiter_altitude;
+
+			const float alt_sp = math::max(_navigator->get_loiter_min_alt() + _destination.alt, loiter_altitude); //meen-s
+
+			if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+			_mission_item.altitude = alt_sp;
+			} else  {_mission_item.altitude = loiter_altitude; } //meen-e
+
+>>>>>>> change RTL patterrn no VTOL, fix FW2MR on ground bug, max.pitch for decel, loiter FW diff from VTOL, no fast-forward/reverse point
 			_mission_item.altitude_is_relative = false;
 			_mission_item.yaw = _destination.yaw;
 			_mission_item.loiter_radius = _navigator->get_loiter_radius();
@@ -534,7 +545,25 @@ RTL::advance_rtl()
 		break;
 
 	case RTL_STATE_RETURN:
+<<<<<<< 82f04a02cd653e338cc3c320dfcf337b1409b5c5
 		_rtl_state = RTL_STATE_DESCEND;
+=======
+
+		// Descend to desired altitude if delay is set, directly land otherwise
+		if (_param_rtl_land_delay.get() < -DELAY_SIGMA || _param_rtl_land_delay.get() > DELAY_SIGMA) {
+			_rtl_state = RTL_STATE_DESCEND;
+
+		} else {
+			_rtl_state = RTL_STATE_LAND;
+		}
+
+		if (_navigator->get_vstatus()->is_vtol
+		    && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING
+		    && (_navigator->force_vtol())) { //meen
+			_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+		}
+
+>>>>>>> change RTL patterrn no VTOL, fix FW2MR on ground bug, max.pitch for decel, loiter FW diff from VTOL, no fast-forward/reverse point
 		break;
 
 	case RTL_STATE_TRANSITION_TO_MC:
