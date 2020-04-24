@@ -92,11 +92,14 @@ RTL::find_RTL_destination()
 		// set destination to mission landing if closest or in RTL_LAND or RTL_MISSION (so not in RTL_CLOSEST)
 		if (dist_squared < min_dist_squared || rtl_type() != RTL_CLOSEST) {
 			min_dist_squared = dist_squared;
-			_destination.lat = _navigator->get_mission_landing_lat();
-			_destination.lon = _navigator->get_mission_landing_lon();
-			_destination.alt = _navigator->get_mission_landing_alt();
-			_destination.type = RTL_DESTINATION_MISSION_LANDING;
-
+			//_destination.lat = _navigator->get_mission_landing_lat(); //meen
+			//_destination.lon = _navigator->get_mission_landing_lon();
+			//_destination.alt = _navigator->get_mission_landing_alt();
+			_destination.lat =  home_landing_position.lat;
+			_destination.lon =  home_landing_position.lon;
+			_destination.alt =  home_landing_position.alt;
+			//_destination.type = RTL_DESTINATION_MISSION_LANDING;
+			_destination.type = RTL_DESTINATION_HOME; //meen
 		}
 	}
 
@@ -180,11 +183,11 @@ RTL::on_activation()
 	// output the correct message, depending on where the RTL destination is
 	switch (_destination.type) {
 	case RTL_DESTINATION_HOME:
-		mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: landing at home position.");
+		mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: to home position."); //landing at //meen
 		break;
 
 	case RTL_DESTINATION_MISSION_LANDING:
-		mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: landing at mission landing.");
+		mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: landing at mission landing."); //meen1
 		break;
 
 	case RTL_DESTINATION_SAFE_POINT:
@@ -240,7 +243,7 @@ RTL::set_rtl_item()
 	// After reaching DO_LAND_START, do nothing, let navigator takeover with mission landing.
 	if (_destination.type == RTL_DESTINATION_MISSION_LANDING) {
 		if (_rtl_state > RTL_STATE_CLIMB) {
-			if (_navigator->start_mission_landing()) {
+			if (_navigator->start_mission_landing()) { //meen1
 				mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: using mission landing");
 				return;
 
@@ -322,6 +325,14 @@ RTL::set_rtl_item()
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
 			_mission_item.altitude = loiter_altitude;
+
+			const float alt_sp = math::max(_navigator->get_loiter_min_alt() + _destination.alt, loiter_altitude); //meen-s
+
+			if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+				_mission_item.altitude = alt_sp;
+			} else  {
+				_mission_item.altitude = loiter_altitude; } //meen-e
+
 			_mission_item.altitude_is_relative = false;
 
 			// Except for vtol which might be still off here and should point towards this location.
@@ -354,6 +365,13 @@ RTL::set_rtl_item()
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
 			_mission_item.altitude = loiter_altitude;
+
+			const float alt_sp = math::max(_navigator->get_loiter_min_alt() + _destination.alt, loiter_altitude); //meen-s
+
+			if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+			_mission_item.altitude = alt_sp;
+			} else  {_mission_item.altitude = loiter_altitude; } //meen-e
+
 			_mission_item.altitude_is_relative = false;
 			_mission_item.yaw = _destination.yaw;
 			_mission_item.loiter_radius = _navigator->get_loiter_radius();
@@ -438,7 +456,8 @@ RTL::advance_rtl()
 		}
 
 		if (_navigator->get_vstatus()->is_vtol
-		    && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+		    && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING
+		    && (_navigator->force_vtol())) { //meen
 			_rtl_state = RTL_STATE_TRANSITION_TO_MC;
 		}
 
