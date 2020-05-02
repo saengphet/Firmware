@@ -105,6 +105,10 @@ private:
 		RTL_STATE_LOITER,
 		RTL_STATE_LAND,
 		RTL_STATE_LANDED,
+		RTL_STATE_DESCEND_VTOL, //meen-rtl
+		RTL_STATE_BRAKE_VTOL,
+		RTL_STATE_LOITER_VTOL,
+
 	} _rtl_state{RTL_STATE_NONE};
 
 	struct RTLPosition {
@@ -112,6 +116,10 @@ private:
 		double lon;
 		float alt;
 		float yaw;
+
+		double transit_lat; //meen-rtl
+		double transit_lon;
+		float transit_yaw;
 		uint8_t safe_point_index; ///< 0 = home position, 1 = mission landing, >1 = safe landing points (rally points)
 		RTLDestinationType type{RTL_DESTINATION_HOME};
 

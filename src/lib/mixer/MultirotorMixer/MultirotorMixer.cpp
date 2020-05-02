@@ -374,8 +374,12 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 					(1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ? 0.0f : outputs[i] /
 							_thrust_factor));
 		}
-
+		//meen
+		if (i==0 || i==2) {
+		outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 0.75f); //meen limit thrust0.8=1910PWM
+		} else {
 		outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
+		}
 	}
 
 	// Slew rate limiting and saturation checking
