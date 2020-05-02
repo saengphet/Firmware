@@ -663,7 +663,7 @@ MulticopterPositionControl::Run()
 			_control.setInputSetpoint(setpoint);
 
 			if (!_control.update(_dt)) {
-				warn_rate_limited("PositionControl: invalid setpoints");
+				warn_rate_limited("PositionControl: invalid setpoints"); //meen-interesting
 				failsafe(setpoint, _states, true, !was_in_failsafe);
 				_control.setInputSetpoint(setpoint);
 				constraints = FlightTask::empty_constraints;
@@ -739,7 +739,7 @@ MulticopterPositionControl::start_flight_task()
 		return;
 	}
 
-	if (_vehicle_status.in_transition_mode) {
+	if (_vehicle_status.in_transition_mode) { //meen-interesting
 		should_disable_task = false;
 		FlightTaskError error = _flight_tasks.switchTask(FlightTaskIndex::Transition);
 
@@ -954,7 +954,7 @@ MulticopterPositionControl::failsafe(vehicle_local_position_setpoint_s &setpoint
 			setpoint.vx = setpoint.vy = 0.f;
 
 			if (warn) {
-				PX4_WARN("Failsafe: stop and wait");
+				PX4_WARN("Failsafe: stop and wait"); //meen-interesting
 			}
 
 		} else {
