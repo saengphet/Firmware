@@ -372,6 +372,7 @@ RTL::set_rtl_item()
 			// Don't change altitude.
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
+<<<<<<< 61a6bdb74c2c5ee5b34a1408850f9aa599cd95c4
 <<<<<<< 82f04a02cd653e338cc3c320dfcf337b1409b5c5
 			//_mission_item.altitude = loiter_altitude;
 
@@ -389,6 +390,14 @@ RTL::set_rtl_item()
 			} else  {_mission_item.altitude = loiter_altitude; } //meen-e
 
 >>>>>>> change RTL patterrn no VTOL, fix FW2MR on ground bug, max.pitch for decel, loiter FW diff from VTOL, no fast-forward/reverse point
+=======
+			//_mission_item.altitude = loiter_altitude;
+
+			if (_navigator->get_vstatus()->is_vtol && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+				_mission_item.altitude = _rtl_alt;
+			} else  {
+				_mission_item.altitude = loiter_altitude; } //meen-e
+>>>>>>> 1. change rtl procedure 2.update push assist-alt 3.limit MR front motor thrust 4.update mixer 5.fix fw loiter 6. fix vtol TO heading hold 7.add wind gazebo
 			_mission_item.altitude_is_relative = false;
 			_mission_item.yaw = _destination.yaw;
 			_mission_item.loiter_radius = _navigator->get_loiter_radius();
@@ -545,6 +554,7 @@ RTL::advance_rtl()
 		break;
 
 	case RTL_STATE_RETURN:
+<<<<<<< 61a6bdb74c2c5ee5b34a1408850f9aa599cd95c4
 <<<<<<< 82f04a02cd653e338cc3c320dfcf337b1409b5c5
 		_rtl_state = RTL_STATE_DESCEND;
 =======
@@ -564,6 +574,9 @@ RTL::advance_rtl()
 		}
 
 >>>>>>> change RTL patterrn no VTOL, fix FW2MR on ground bug, max.pitch for decel, loiter FW diff from VTOL, no fast-forward/reverse point
+=======
+		_rtl_state = RTL_STATE_DESCEND;
+>>>>>>> 1. change rtl procedure 2.update push assist-alt 3.limit MR front motor thrust 4.update mixer 5.fix fw loiter 6. fix vtol TO heading hold 7.add wind gazebo
 		break;
 
 	case RTL_STATE_TRANSITION_TO_MC:
