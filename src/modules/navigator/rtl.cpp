@@ -456,24 +456,27 @@ RTL::set_rtl_item()
 
 	case RTL_STATE_BRAKE_VTOL: {
 			// Don't change altitude. //hold last heading prevent hard roll
-			_mission_item.lat = _destination.transit_lat;
-			_mission_item.lon = _destination.transit_lon;
+			_mission_item.lat = _destination.lat; //_destination.transit_lat;
+			_mission_item.lon = _destination.lon; //_destination.transit_lon;
 			_mission_item.altitude = loiter_altitude;
 			_mission_item.altitude_is_relative = false;
-			_mission_item.yaw = _destination.transit_yaw;
+			_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon); //_destination.transit_yaw;
 			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius()*50.0f;
+			_mission_item.acceptance_radius = _navigator->get_acceptance_radius()*1.0f;
 			_mission_item.time_inside = 0.0f;
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
-			_navigator->set_can_loiter_at_sp(true);
+			//_navigator->set_can_loiter_at_sp(true);
 
-			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: VTOL braking after transition");
+			// Disable previous setpoint to prevent drift.
+			pos_sp_triplet->previous.valid = false;
+
+			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: VTOL heading to home");
 
 		break;
 		}
 
-	case RTL_STATE_LOITER_VTOL: {
+	/*case RTL_STATE_LOITER_VTOL: {
 			// Don't change altitude. //heading to home and landing
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
@@ -487,7 +490,7 @@ RTL::set_rtl_item()
 			}
 			_mission_item.loiter_radius = _navigator->get_loiter_radius();
 			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
-			_mission_item.time_inside = 3.0f; //delay 3 sec
+			_mission_item.time_inside = 0.0f; //delay 3 sec
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
 
@@ -505,7 +508,7 @@ RTL::set_rtl_item()
 
 		break;
 		}
-
+	*/
 	default:
 		break;
 	}
@@ -538,7 +541,9 @@ RTL::advance_rtl()
 		break;
 
 	case RTL_STATE_TRANSITION_TO_MC:
-		_rtl_state = RTL_STATE_BRAKE_VTOL;
+		//_rtl_state = RTL_STATE_BRAKE_VTOL;
+		//_rtl_state = RTL_STATE_LOITER_VTOL;
+		_rtl_state = RTL_STATE_LAND;
 		break;
 
 	case RTL_STATE_DESCEND:
@@ -572,11 +577,13 @@ RTL::advance_rtl()
 		break;
 
 	case RTL_STATE_DESCEND_VTOL:
-		_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+		//_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+		_rtl_state = RTL_STATE_BRAKE_VTOL;
 		break;
 
 	case RTL_STATE_BRAKE_VTOL:
-		_rtl_state = RTL_STATE_LOITER_VTOL;
+		//_rtl_state = RTL_STATE_LOITER_VTOL;
+		_rtl_state = RTL_STATE_TRANSITION_TO_MC;
 		break;
 
 	case RTL_STATE_LOITER_VTOL:
