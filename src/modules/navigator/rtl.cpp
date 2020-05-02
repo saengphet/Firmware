@@ -183,7 +183,7 @@ RTL::on_activation()
 	// output the correct message, depending on where the RTL destination is
 	switch (_destination.type) {
 	case RTL_DESTINATION_HOME:
-		mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: to home position."); //landing at //meen
+		mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: going to home position."); //landing at //meen
 		break;
 
 	case RTL_DESTINATION_MISSION_LANDING:
@@ -309,7 +309,7 @@ RTL::set_rtl_item()
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
 
-			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: return at %d m (%d m above destination)",
+			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: return to %d m (%d m above destination)",
 						     (int)ceilf(_mission_item.altitude), (int)ceilf(_mission_item.altitude - _destination.alt));
 
 			break;
@@ -317,21 +317,29 @@ RTL::set_rtl_item()
 
 	case RTL_STATE_TRANSITION_TO_MC: {
 			set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC);
+			_destination.transit_lat = gpos.lat;
+			_destination.transit_lon = gpos.lon;
+			_destination.transit_yaw = _navigator->get_local_position()->yaw;
 			break;
 		}
 
 	case RTL_STATE_DESCEND: {
-			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+
+			if (_navigator->get_vstatus()->is_vtol && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+				_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
+				_mission_item.altitude = _rtl_alt;
+
+			} else if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+				_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
+				_mission_item.altitude = loiter_altitude;
+
+			} else {
+				_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+				_mission_item.altitude = loiter_altitude;
+			}
+
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
-			_mission_item.altitude = loiter_altitude;
-
-			const float alt_sp = math::max(_navigator->get_loiter_min_alt() + _destination.alt, loiter_altitude); //meen-s
-
-			if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
-				_mission_item.altitude = alt_sp;
-			} else  {
-				_mission_item.altitude = loiter_altitude; } //meen-e
 
 			_mission_item.altitude_is_relative = false;
 
@@ -353,7 +361,7 @@ RTL::set_rtl_item()
 			// Disable previous setpoint to prevent drift.
 			pos_sp_triplet->previous.valid = false;
 
-			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: descend to %d m (%d m above destination)",
+			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: loiter at %d m (%d m above destination)",
 						     (int)ceilf(_mission_item.altitude), (int)ceilf(_mission_item.altitude - _destination.alt));
 			break;
 		}
@@ -364,14 +372,12 @@ RTL::set_rtl_item()
 			// Don't change altitude.
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
-			_mission_item.altitude = loiter_altitude;
+			//_mission_item.altitude = loiter_altitude;
 
-			const float alt_sp = math::max(_navigator->get_loiter_min_alt() + _destination.alt, loiter_altitude); //meen-s
-
-			if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
-			_mission_item.altitude = alt_sp;
-			} else  {_mission_item.altitude = loiter_altitude; } //meen-e
-
+			if (_navigator->get_vstatus()->is_vtol && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+				_mission_item.altitude = _rtl_alt;
+			} else  {
+				_mission_item.altitude = loiter_altitude; } //meen-e
 			_mission_item.altitude_is_relative = false;
 			_mission_item.yaw = _destination.yaw;
 			_mission_item.loiter_radius = _navigator->get_loiter_radius();
@@ -382,9 +388,9 @@ RTL::set_rtl_item()
 
 			_navigator->set_can_loiter_at_sp(true);
 
-			if (autoland && (get_time_inside(_mission_item) > FLT_EPSILON)) {
+			if (autoland && (_mission_item.time_inside > FLT_EPSILON)) {
 				_mission_item.nav_cmd = NAV_CMD_LOITER_TIME_LIMIT;
-				mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: loiter %.1fs",
+				mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: loiter time %.1fs",
 							     (double)get_time_inside(_mission_item));
 
 			} else {
@@ -418,6 +424,88 @@ RTL::set_rtl_item()
 			break;
 		}
 
+	case RTL_STATE_DESCEND_VTOL: {
+			_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
+			_mission_item.altitude = loiter_altitude;
+			_mission_item.lat = _destination.lat;
+			_mission_item.lon = _destination.lon;
+			_mission_item.altitude_is_relative = false;
+			//_mission_item.loiter_exit_xtrack = 0; //0 = center wp
+			//_mission_item.vtol_back_transition = true; //cal. acc for vtol stop
+
+			// Except for vtol which might be still off here and should point towards this location.
+			const float d_current = get_distance_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
+			if (_navigator->get_vstatus()->is_vtol && (d_current > _navigator->get_acceptance_radius())) {
+				_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
+			} else {
+				_mission_item.yaw = _destination.yaw;
+			}
+
+			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.time_inside = 0.0f;
+			_mission_item.autocontinue = true;
+			_mission_item.origin = ORIGIN_ONBOARD;
+
+			// Disable previous setpoint to prevent drift.
+			pos_sp_triplet->previous.valid = false;
+
+			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: descend to transition %d m above destination)",
+							(int)ceilf(_mission_item.altitude - _destination.alt));
+		break;
+		}
+
+	case RTL_STATE_BRAKE_VTOL: {
+			// Don't change altitude. //hold last heading prevent hard roll
+			_mission_item.lat = _destination.transit_lat;
+			_mission_item.lon = _destination.transit_lon;
+			_mission_item.altitude = loiter_altitude;
+			_mission_item.altitude_is_relative = false;
+			_mission_item.yaw = _destination.transit_yaw;
+			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+			_mission_item.acceptance_radius = _navigator->get_acceptance_radius()*50.0f;
+			_mission_item.time_inside = 0.0f;
+			_mission_item.autocontinue = true;
+			_mission_item.origin = ORIGIN_ONBOARD;
+			_navigator->set_can_loiter_at_sp(true);
+
+			mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: VTOL braking after transition");
+
+		break;
+		}
+
+	case RTL_STATE_LOITER_VTOL: {
+			// Don't change altitude. //heading to home and landing
+			_mission_item.lat = _destination.lat;
+			_mission_item.lon = _destination.lon;
+			_mission_item.altitude = loiter_altitude;
+			_mission_item.altitude_is_relative = false;
+			const float d_current = get_distance_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
+			if (_navigator->get_vstatus()->is_vtol && (d_current > _navigator->get_acceptance_radius())) {
+				_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
+			} else {
+				_mission_item.yaw = _destination.yaw;
+			}
+			_mission_item.loiter_radius = _navigator->get_loiter_radius();
+			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.time_inside = 3.0f; //delay 3 sec
+			_mission_item.autocontinue = true;
+			_mission_item.origin = ORIGIN_ONBOARD;
+
+			_navigator->set_can_loiter_at_sp(true);
+
+			if ((_mission_item.time_inside > FLT_EPSILON)) {
+				_mission_item.nav_cmd = NAV_CMD_LOITER_TIME_LIMIT;
+				mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: VTOL moving to landing destination");// time %.1fs",
+							    //(double)get_time_inside(_mission_item));
+
+			} else {
+				_mission_item.nav_cmd = NAV_CMD_LOITER_UNLIMITED;
+				mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: descend completed, VTOL loitering");
+			}
+
+		break;
+		}
+
 	default:
 		break;
 	}
@@ -446,45 +534,53 @@ RTL::advance_rtl()
 		break;
 
 	case RTL_STATE_RETURN:
-
-		// Descend to desired altitude if delay is set, directly land otherwise
-		if (_param_rtl_land_delay.get() < -DELAY_SIGMA || _param_rtl_land_delay.get() > DELAY_SIGMA) {
-			_rtl_state = RTL_STATE_DESCEND;
-
-		} else {
-			_rtl_state = RTL_STATE_LAND;
-		}
-
-		if (_navigator->get_vstatus()->is_vtol
-		    && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING
-		    && (_navigator->force_vtol())) { //meen
-			_rtl_state = RTL_STATE_TRANSITION_TO_MC;
-		}
-
+		_rtl_state = RTL_STATE_DESCEND;
 		break;
 
 	case RTL_STATE_TRANSITION_TO_MC:
-		_rtl_state = RTL_STATE_RETURN;
+		_rtl_state = RTL_STATE_BRAKE_VTOL;
 		break;
 
 	case RTL_STATE_DESCEND:
 
-		// Only go to land if autoland is enabled.
+		// XX
 		if (_param_rtl_land_delay.get() < -DELAY_SIGMA || _param_rtl_land_delay.get() > DELAY_SIGMA) {
 			_rtl_state = RTL_STATE_LOITER;
 
 		} else {
-			_rtl_state = RTL_STATE_LAND;
+			if (_navigator->get_vstatus()->is_vtol
+		    	&& _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+				_rtl_state = RTL_STATE_DESCEND_VTOL;
+		    	}else {
+				_rtl_state = RTL_STATE_LAND;
+		    	}
 		}
 
 		break;
 
 	case RTL_STATE_LOITER:
-		_rtl_state = RTL_STATE_LAND;
+		if (_navigator->get_vstatus()->is_vtol
+		 && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+			_rtl_state = RTL_STATE_DESCEND_VTOL;
+		}else {
+			_rtl_state = RTL_STATE_LAND;
+		}
 		break;
 
 	case RTL_STATE_LAND:
 		_rtl_state = RTL_STATE_LANDED;
+		break;
+
+	case RTL_STATE_DESCEND_VTOL:
+		_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+		break;
+
+	case RTL_STATE_BRAKE_VTOL:
+		_rtl_state = RTL_STATE_LOITER_VTOL;
+		break;
+
+	case RTL_STATE_LOITER_VTOL:
+		_rtl_state = RTL_STATE_LAND;
 		break;
 
 	default:

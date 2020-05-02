@@ -190,7 +190,7 @@ void VtolType::update_transition_state()
 float VtolType::update_and_get_backtransition_pitch_sp()
 {
 	// maximum up or down pitch the controller is allowed to demand
-	const float pitch_lim = 0.25f; //meen for 0.3f >> 0.25 rad = 14.32 deg
+	const float pitch_lim = 0.175f; //meen for 0.3f >> 0.25 rad = 14.32 deg >> 0.175 = 10.02deg
 	const Eulerf euler(Quatf(_v_att->q));
 
 	const float track = atan2f(_local_pos->vy, _local_pos->vx);
@@ -422,6 +422,43 @@ bool VtolType::is_channel_set(const int channel, const int target)
 
 float VtolType::pusher_assist() //meen-interesting
 {
+	// Altitude above ground is distance sensor altitude if available, otherwise local z-position
+	float dist_to_ground = -_local_pos->z;
+
+	if (_local_pos->dist_bottom_valid) {
+		dist_to_ground = _local_pos->dist_bottom;
+	}
+
+	// disable pusher assist depending on setting of forward_thrust_enable_mode:
+	switch (_params->vt_forward_thrust_enable_mode) {
+	case DISABLE: // disable in all modes
+		return 0.0f;
+		break;
+
+	case ENABLE_WITHOUT_LAND: // disable in land mode
+		if (_attc->get_pos_sp_triplet()->current.valid
+		    && _attc->get_pos_sp_triplet()->current.type == position_setpoint_s::SETPOINT_TYPE_LAND
+		    && _v_control_mode->flag_control_auto_enabled) {
+			return 0.0f;
+		}
+
+		break;
+
+	case ENABLE_ABOVE_MPC_LAND_ALT1: // disable if below MPC_LAND_ALT1
+		if (!PX4_ISFINITE(dist_to_ground) || (dist_to_ground < _params->mpc_land_alt1)) {
+			return 0.0f;
+		}
+
+		break;
+
+	case ENABLE_ABOVE_MPC_LAND_ALT2: // disable if below MPC_LAND_ALT2
+		if (!PX4_ISFINITE(dist_to_ground) || (dist_to_ground < _params->mpc_land_alt2)) {
+			return 0.0f;
+		}
+
+		break;
+	}
+
 	// if the thrust scale param is zero or the drone is not in some position or altitude control mode,
 	// then the pusher-for-pitch strategy is disabled and we can return
 	if (_params->forward_thrust_scale < FLT_EPSILON || !(_v_control_mode->flag_control_position_enabled
@@ -431,12 +468,6 @@ float VtolType::pusher_assist() //meen-interesting
 
 	// Do not engage pusher assist during a failsafe event (could be a problem with the fixed wing drive)
 	if (_attc->get_vtol_vehicle_status()->vtol_transition_failsafe) {
-		return 0.0f;
-	}
-
-	// disable pusher assist during landing
-	if (_attc->get_pos_sp_triplet()->current.valid
-	    && _attc->get_pos_sp_triplet()->current.type == position_setpoint_s::SETPOINT_TYPE_LAND) {
 		return 0.0f;
 	}
 
