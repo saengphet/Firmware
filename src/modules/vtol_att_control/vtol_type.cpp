@@ -190,7 +190,7 @@ void VtolType::update_transition_state()
 float VtolType::update_and_get_backtransition_pitch_sp()
 {
 	// maximum up or down pitch the controller is allowed to demand
-	const float pitch_lim = 0.25f; //meen for 0.3f >> 0.25 rad = 14.32 deg
+	const float pitch_lim = 0.175f; //meen for 0.3f >> 0.25 rad = 14.32 deg >> 0.175 = 10.02deg
 	const Eulerf euler(Quatf(_v_att->q));
 
 	const float track = atan2f(_local_pos->vy, _local_pos->vx);
