@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,70 +32,28 @@
  ****************************************************************************/
 
 /**
- * @file PublicationQueuedMulti.hpp
+ * @file board_shutdown.cpp
  *
+ * sitl board shutdown backend.
  */
 
-#pragma once
+#include <px4_platform_common/tasks.h>
+#include <board_config.h>
+#include <stdio.h>
 
-#include <px4_platform_common/defines.h>
-#include <systemlib/err.h>
-#include <uORB/uORB.h>
-
-namespace uORB
+#if defined(BOARD_HAS_POWER_CONTROL)
+int board_register_power_state_notification_cb(power_button_state_notification_t cb)
 {
+	return 0;
+}
+#endif // BOARD_HAS_POWER_CONTROL
 
-/**
- * Queued publication with queue length set as a message constant (ORB_QUEUE_LENGTH)
- */
-template<typename T>
-class PublicationQueuedMulti
+#if defined(CONFIG_BOARDCTL_POWEROFF)
+int board_power_off(int status)
 {
-public:
-
-	/**
-	 * Constructor
-	 *
-	 * @param meta The uORB metadata (usually from the ORB_ID() macro) for the topic.
-	 */
-	PublicationQueuedMulti(const orb_metadata *meta, uint8_t priority = ORB_PRIO_DEFAULT) :
-		_meta(meta),
-		_priority(priority)
-	{}
-
-	~PublicationQueuedMulti()
-	{
-		//orb_unadvertise(_handle);
-	}
-
-	/**
-	 * Publish the struct
-	 * @param data The uORB message struct we are updating.
-	 */
-	bool publish(const T &data)
-	{
-		if (_handle != nullptr) {
-			return (orb_publish(_meta, _handle, &data) == PX4_OK);
-
-		} else {
-			int instance = 0;
-			orb_advert_t handle = orb_advertise_multi_queue(_meta, &data, &instance, _priority, T::ORB_QUEUE_LENGTH);
-
-			if (handle != nullptr) {
-				_handle = handle;
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-protected:
-	const orb_metadata *_meta;
-
-	orb_advert_t _handle{nullptr};
-
-	const uint8_t _priority;
-};
-
-} // namespace uORB
+	printf("Exiting NOW.\n");
+	fflush(stdout);
+	system_exit(0);
+	return 0;
+}
+#endif // CONFIG_BOARDCTL_POWEROFF

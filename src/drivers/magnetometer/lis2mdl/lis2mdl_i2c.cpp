@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017 PX4 Development Team. All rights reserved.
- *   Author: @author David Sidrane <david_s5@nscdg.com>
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,75 +32,99 @@
  ****************************************************************************/
 
 /**
- * @file board_reset.c
- * Implementation of kinetis based Board RESET API
+ * @file lis2mdl_i2c.cpp
+ *
+ * I2C interface for LIS2MDL
  */
 
 #include <px4_platform_common/px4_config.h>
+
+#include <assert.h>
+#include <debug.h>
 #include <errno.h>
-#include <nuttx/board.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
+#include <drivers/device/i2c.h>
+#include <drivers/drv_mag.h>
+#include <drivers/drv_device.h>
 
-#ifdef CONFIG_BOARDCTL_RESET
+#include "board_config.h"
+#include "lis2mdl.h"
 
-/****************************************************************************
- * Public functions
- ****************************************************************************/
+#define LIS2MDLL_ADDRESS        0x1e
 
-/****************************************************************************
- * Name: board_reset
- *
- * Description:
- *   Reset board.  Support for this function is required by board-level
- *   logic if CONFIG_BOARDCTL_RESET is selected.
- *
- * Input Parameters:
- *   status - Status information provided with the reset event.  This
- *            meaning of this status information is board-specific.  If not
- *            used by a board, the value zero may be provided in calls to
- *            board_reset().
- *
- * Returned Value:
- *   If this function returns, then it was not possible to power-off the
- *   board due to some constraints.  The return value int this case is a
- *   board-specific reason for the failure to shutdown.
- *
- ****************************************************************************/
-
-int board_reset(int status)
+class LIS2MDL_I2C : public device::I2C
 {
-	up_systemreset();
-	return 0;
+public:
+	LIS2MDL_I2C(int bus, int bus_frequency);
+	virtual ~LIS2MDL_I2C() = default;
+
+	virtual int     read(unsigned address, void *data, unsigned count);
+	virtual int     write(unsigned address, void *data, unsigned count);
+
+protected:
+	virtual int     probe();
+
+};
+
+device::Device *
+LIS2MDL_I2C_interface(int bus, int bus_frequency);
+
+device::Device *
+LIS2MDL_I2C_interface(int bus, int bus_frequency)
+{
+	return new LIS2MDL_I2C(bus, bus_frequency);
 }
 
-#endif /* CONFIG_BOARDCTL_RESET */
-
-
-int board_set_bootload_mode(board_reset_e mode)
+LIS2MDL_I2C::LIS2MDL_I2C(int bus, int bus_frequency) :
+	I2C(DRV_MAG_DEVTYPE_LIS2MDL, "LIS2MDL_I2C", bus, LIS2MDLL_ADDRESS, bus_frequency)
 {
-	uint32_t regvalue = 0;
+}
 
-	switch (mode) {
-	case board_reset_normal:
-	case board_reset_extended:
-		break;
+int
+LIS2MDL_I2C::probe()
+{
+	uint8_t data = 0;
 
-	case board_reset_enter_bootloader:
-		regvalue = 0xb007b007;
-		break;
+	_retries = 10;
 
-	default:
-		return -EINVAL;
+	if (read(ADDR_WHO_AM_I, &data, 1)) {
+		DEVICE_DEBUG("read_reg fail");
+		return -EIO;
 	}
 
-	*((uint32_t *) KINETIS_VBATR_BASE) = regvalue;
+	_retries = 2;
+
+	if (data != ID_WHO_AM_I) {
+		DEVICE_DEBUG("LIS2MDL bad ID: %02x", data);
+		return -EIO;
+	}
+
 	return OK;
 }
 
-
-void board_system_reset(int status)
+int
+LIS2MDL_I2C::read(unsigned address, void *data, unsigned count)
 {
-	board_reset(status);
+	uint8_t cmd = address;
+	return transfer(&cmd, 1, (uint8_t *)data, count);
+}
 
-	while (1);
+int
+LIS2MDL_I2C::write(unsigned address, void *data, unsigned count)
+{
+	uint8_t buf[32];
+
+	if (sizeof(buf) < (count + 1)) {
+		return -EIO;
+	}
+
+	buf[0] = address;
+	memcpy(&buf[1], data, count);
+
+	return transfer(&buf[0], count + 1, nullptr, 0);
 }

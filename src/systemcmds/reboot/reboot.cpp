@@ -45,9 +45,7 @@
 #include <px4_platform_common/shutdown.h>
 #include <string.h>
 
-__EXPORT int reboot_main(int argc, char *argv[]);
-
-static void print_usage(void)
+static void print_usage()
 {
 	PRINT_MODULE_DESCRIPTION("Reboot the system");
 
@@ -57,13 +55,13 @@ static void print_usage(void)
 	PRINT_MODULE_USAGE_ARG("lock|unlock", "Take/release the shutdown lock (for testing)", true);
 }
 
-int reboot_main(int argc, char *argv[])
+extern "C" __EXPORT int reboot_main(int argc, char *argv[])
 {
 	int ch;
 	bool to_bootloader = false;
 
 	int myoptind = 1;
-	const char *myoptarg = NULL;
+	const char *myoptarg = nullptr;
 
 	while ((ch = px4_getopt(argc, argv, "b", &myoptind, &myoptarg)) != -1) {
 		switch (ch) {
@@ -100,7 +98,7 @@ int reboot_main(int argc, char *argv[])
 		return ret;
 	}
 
-	int ret = px4_shutdown_request(true, to_bootloader);
+	int ret = px4_reboot_request(to_bootloader);
 
 	if (ret < 0) {
 		PX4_ERR("reboot failed (%i)", ret);
