@@ -205,14 +205,14 @@ void Simulator::update_sensors(const hrt_abstime &time, const mavlink_hil_sensor
 		}
 	}
 
-	// gyro
-	if ((sensors.fields_updated & SensorSource::GYRO) == SensorSource::GYRO && !_param_sim_gyro_block.get()) {
-		_px4_gyro.update(time, sensors.xgyro, sensors.ygyro, sensors.zgyro);
-	}
-
 	// accel
 	if ((sensors.fields_updated & SensorSource::ACCEL) == SensorSource::ACCEL && !_param_sim_accel_block.get()) {
 		_px4_accel.update(time, sensors.xacc, sensors.yacc, sensors.zacc);
+	}
+
+	// gyro
+	if ((sensors.fields_updated & SensorSource::GYRO) == SensorSource::GYRO && !_param_sim_gyro_block.get()) {
+		_px4_gyro.update(time, sensors.xgyro, sensors.ygyro, sensors.zgyro);
 	}
 
 	// magnetometer
@@ -350,7 +350,7 @@ void Simulator::handle_message_hil_sensor(const mavlink_message_t *msg)
 	static uint64_t last_integration_us = 0;
 
 	// battery simulation (limit update to 100Hz)
-	if (hrt_elapsed_time(&_last_battery_timestamp) >= 10_ms) {
+	if (hrt_elapsed_time(&_last_battery_timestamp) >= SimulatorBattery::SIMLATOR_BATTERY_SAMPLE_INTERVAL_US) {
 
 		const float discharge_interval_us = _param_sim_bat_drain.get() * 1000 * 1000;
 
@@ -369,7 +369,7 @@ void Simulator::handle_message_hil_sensor(const mavlink_message_t *msg)
 
 		float ibatt = -1.0f; // no current sensor in simulation
 
-		battery_percentage = math::max(battery_percentage, _battery_min_percentage.get() / 100.f);
+		battery_percentage = math::max(battery_percentage, _param_bat_min_pct.get() / 100.f);
 		float vbatt = math::gradual(battery_percentage, 0.f, 1.f, _battery.empty_cell_voltage(), _battery.full_cell_voltage());
 		vbatt *= _battery.cell_count();
 
@@ -1037,7 +1037,12 @@ int Simulator::publish_odometry_topic(const mavlink_message_t *odom_mavlink)
 		matrix::Quatf q(odom_msg.q[0], odom_msg.q[1], odom_msg.q[2], odom_msg.q[3]);
 		q.copyTo(odom.q);
 
-		odom.local_frame = vehicle_odometry_s::LOCAL_FRAME_FRD;
+		if (odom_msg.frame_id == MAV_FRAME_LOCAL_NED) {
+			odom.local_frame = vehicle_odometry_s::LOCAL_FRAME_NED;
+
+		} else {
+			odom.local_frame = vehicle_odometry_s::LOCAL_FRAME_FRD;
+		}
 
 		static_assert(POS_URT_SIZE == (sizeof(odom_msg.pose_covariance) / sizeof(odom_msg.pose_covariance[0])),
 			      "Odometry Pose Covariance matrix URT array size mismatch");
@@ -1066,6 +1071,17 @@ int Simulator::publish_odometry_topic(const mavlink_message_t *odom_mavlink)
 		/* The velocity covariance URT */
 		for (size_t i = 0; i < VEL_URT_SIZE; i++) {
 			odom.velocity_covariance[i] = odom_msg.velocity_covariance[i];
+		}
+
+		/* Publish the odometry based on the source */
+		if (odom_msg.estimator_type == MAV_ESTIMATOR_TYPE_VISION || odom_msg.estimator_type == MAV_ESTIMATOR_TYPE_VIO) {
+			_visual_odometry_pub.publish(odom);
+
+		} else if (odom_msg.estimator_type == MAV_ESTIMATOR_TYPE_MOCAP) {
+			_mocap_odometry_pub.publish(odom);
+
+		} else {
+			PX4_ERR("Estimator source %u not supported. Unable to publish pose and velocity", odom_msg.estimator_type);
 		}
 
 	} else if (odom_mavlink->msgid == MAVLINK_MSG_ID_VISION_POSITION_ESTIMATE) {
@@ -1102,10 +1118,9 @@ int Simulator::publish_odometry_topic(const mavlink_message_t *odom_mavlink)
 		/* The velocity covariance URT - unknown */
 		odom.velocity_covariance[0] = NAN;
 
+		/* Publish the odometry */
+		_visual_odometry_pub.publish(odom);
 	}
-
-	/** @note: frame_id == MAV_FRAME_VISION_NED) */
-	_visual_odometry_pub.publish(odom);
 
 	return PX4_OK;
 }
